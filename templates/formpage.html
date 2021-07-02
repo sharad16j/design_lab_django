@@ -1,0 +1,14 @@
+{% extends 'basic.html' %}
+{% block body %}
+
+
+
+
+<form method="POST" id="form">
+{% csrf_token %}
+
+{{form.as_p}}
+
+<button type="submit" class="btn btn-primary">submit</button>
+</form>
+{% endblock %}

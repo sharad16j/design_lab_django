@@ -1,0 +1,186 @@
+{%extends 'basic.html'%}
+{% load static %}
+{% block title%}All Songs{% endblock %}
+
+{% block body %}
+
+{% if message%}
+<script>
+    Swal.fire({
+        position: 'top-end',
+        // icon: 'success',
+        title: '{{message}}',
+        showConfirmButton: false,
+        timer: 1500
+    })
+
+
+</script>
+{% endif %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6" style="padding-top: 3%;">
+            <img src="{{song.image.url}}" alt="" height="250px" width="350px">
+        </div>
+        <div class="col-md-6">
+            <h2 style="padding-top: 6%; font-weight: 550; color: green;">Title: {{song.name}}</h2>
+            <h5 style="padding-top: 2%; font-weight: 550;">Category: {{song.tags}}</h5>
+            <h5 style="padding-top: 2%; font-weight: 550;">Movie: {{song.movie}}</h5>
+            <h5 style="padding-top: 2%; font-weight: 550;">Singer: {{song.singer}}</h5>
+
+            <audio controls style="padding-top: 2%;" id="myAudioID">
+                <source src="{{song.song.url}}" type="audio/mp3">
+            </audio>
+
+            <div style="padding-top: 2%;">
+
+                <div class="row" style="padding-left: 3%;">
+                    <form action="/musicbeats/watchlater" method="POST">{% csrf_token %}
+                        <input type="hidden" name="video_id" value="{{song.song_id}}">
+                        {% comment %} <button type="submit" class="btn btn-outline-danger" id="submit_btn">Add to Listen
+                            Later</button> {% endcomment %}
+                    </form>
+                    {% comment %} <a download href="/media/{{song.song}}" style="padding-left: 1%;"><button
+                            class="btn btn-outline-danger">Download Song</button></a> {% endcomment %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio controls style="padding-top: 2%; display :None;" id="yes">
+    <source src="" type="audio/mp3">
+</audio>
+<audio controls style="padding-top: 2%; display :None; " id="no">
+    <source src="" type="audio/mp3">
+</audio>
+<audio controls style="padding-top: 2%; display :None; " id="prompt">
+    <source src="" type="audio/mp3">
+</audio>
+<audio controls style="padding-top: 2%; display :None; " id="event">
+    <source src="" type="audio/mp3">
+</audio>
+
+
+
+{% block js %}
+
+{% endblock%}
+
+<script>
+    var getUrl = window.location;
+    // var baseUrl = getUrl .protocol + "//" + getUrl.host + "/" 
+    var baseUrl = "https://musicfiles.s3.amazonaws.com/";
+    console.log(baseUrl)
+    document.addEventListener('DOMContentLoaded', init);
+
+    var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition
+    var recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    var result = "";
+    let p1 = document.getElementById("myAudioID");
+    var n = 1;
+    function init() {
+        p1.addEventListener('play', setinterval);
+    }
+    var interval = {{ song.first_prompt }};
+    var myVar1;
+    function setinterval() {
+
+        myVar1 = setTimeout(music, interval * 1000);
+    }
+
+    let promp_aud = document.createElement('audio');
+    let yes_aud = document.createElement('audio');
+    let no_aud = document.createElement('audio');
+
+    function goAudio(ev) {
+        console.log(ev.target.src, 'has started playing');
+    }
+
+    function doneAudio(ev) {
+        console.log(ev.target.src, 'has finished playing');
+        let fn = ev.target.getAttribute('data-file');
+
+    }
+
+    function music() {
+        // clearInterval(myVar1);
+        if (p1.onended) {
+            n=1;
+            console.log("done");
+        }
+        else {
+            var prompt_id = {{ song.song_id }};
+
+        $.ajax({
+            type: "GET",
+            url: '/ajax/',
+            data: {
+                prompt_no: n,
+                song_id: prompt_id,
+            },
+            success: (datas) => {
+                console.log(baseUrl + datas.prompturl);
+                promp_aud.src = baseUrl + datas.prompturl;
+                yes_aud.src = baseUrl + datas.yesurl;
+                no_aud.src = baseUrl + datas.nourl;
+                nextprompt = datas.next_prompt;
+                previousprompt =datas.previous_prompt;
+                interval = nextprompt - previousprompt;
+
+                console.log(n, interval);
+
+                p1.pause()
+                promp_aud.play()
+                promp_aud.onended = function () {
+                    recognition.start();
+                    recognition.onspeechend = function () {
+                        recognition.stop();
+                    }
+
+                    recognition.onerror = function (event) {
+                        p1.play();
+                        console.log('Speech recognition error detected: ' + event.error);
+                    }
+                    recognition.onresult = function (event) {
+                        result = event.results[0][0].transcript;
+                        console.log(result)
+                        if (result == "yes") {
+
+                            yes_aud.play();
+                            yes_aud.onended = function () {
+                                n = n + 1;
+                                yes_aud.pause();
+                                myVar1 = setTimeout(music, interval * 1000);
+                                p1.play();
+                            }
+                        }
+                        else {
+
+
+                            no_aud.play();
+                            console.log(p1.currentTime);
+                            console.log(datas.no_action);
+                            p1.currentTime += datas.no_action;
+                            interval=interval-datas.no_action 
+                            no_aud.onended = function () {
+                                n = n + 1;
+                                no_aud.pause();
+                                myVar1 = setTimeout(music, interval * 1000);
+                                p1.play();
+                            }
+                        }
+                    }
+                }
+            },
+            error : () => {
+                p1.play();
+
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

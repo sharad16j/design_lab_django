@@ -1,0 +1,21 @@
+{%extends 'basic.html'%}
+{%load static %}
+ <tr>
+    <td> Song</td>
+
+    <td>
+        <audio controls="controls">
+            <source src="{% static 'Main_1.mp3'%}" type="audio/mp3" />
+            <!-- <source src="{{ song.audio_file.url }}" type="audio/mpeg" />
+            <source src="{{ song.audio_file.url }}" type="audio/wav" /> -->
+          Your browser does  support the audio element.
+          </audio>
+    </td>
+    <td>
+        <a href="">
+            <img src=" class="img-responsive" style="width: 20px; float: left; margin-right: 10px;" />
+        </a>
+        <a href=""></a>
+    </td>
+
+</tr> 
